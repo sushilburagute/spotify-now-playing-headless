@@ -5,6 +5,7 @@
 
 export {
   createNowPlayingRoute,
+  type CreateNowPlayingRouteOptions,
 } from './createNowPlayingRoute'
 
 export {
@@ -16,3 +17,5 @@ export {
   createTopArtistsRoute,
   type CreateTopArtistsRouteOptions,
 } from './createTopArtistsRoute'
+
+export type { SpotifyRouteOptions } from './routeUtils'

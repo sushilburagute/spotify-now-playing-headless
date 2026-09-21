@@ -1,0 +1,7 @@
+{
+  "name": "consumer-types-test",
+  "private": true,
+  "dependencies": {
+    "spotify-now-playing-headless": "file:../.."
+  }
+}

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
 import type { NowPlayingResponse } from '../core/types'
+import { useSpotifyEndpoint, type SpotifyFetcher } from './useSpotifyEndpoint'
 
 /**
  * Options for the useNowPlaying hook
@@ -8,7 +8,7 @@ export type UseNowPlayingOptions = {
   /** The API endpoint to fetch from */
   endpoint: string
   /** Custom fetcher function. Defaults to native fetch with JSON parsing */
-  fetcher?: (url: string) => Promise<NowPlayingResponse>
+  fetcher?: SpotifyFetcher<NowPlayingResponse>
   /** Refresh interval in milliseconds. Set to 0 to disable auto-refresh */
   refreshInterval?: number
   /** Whether to fetch on mount. Defaults to true */
@@ -26,18 +26,7 @@ export type UseNowPlayingResult = {
   /** Whether the data is currently being fetched */
   isLoading: boolean
   /** Manually trigger a refetch */
-  mutate: () => void
-}
-
-/**
- * Default fetcher using native fetch
- */
-const defaultFetcher = async (url: string): Promise<NowPlayingResponse> => {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`)
-  }
-  return response.json()
+  mutate: () => Promise<void>
 }
 
 /**
@@ -87,65 +76,5 @@ const defaultFetcher = async (url: string): Promise<NowPlayingResponse> => {
 export function useNowPlaying(
   options: UseNowPlayingOptions
 ): UseNowPlayingResult {
-  const {
-    endpoint,
-    fetcher = defaultFetcher,
-    refreshInterval = 0,
-    enabled = true,
-  } = options
-
-  const [data, setData] = useState<NowPlayingResponse | undefined>(undefined)
-  const [error, setError] = useState<Error | undefined>(undefined)
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const fetchData = useCallback(async () => {
-    if (!enabled) return
-
-    setIsLoading(true)
-    setError(undefined)
-
-    try {
-      const result = await fetcher(endpoint)
-      setData(result)
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch now playing')
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }, [endpoint, fetcher, enabled])
-
-  const mutate = useCallback(() => {
-    fetchData()
-  }, [fetchData])
-
-  // Initial fetch
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  // Auto-refresh
-  useEffect(() => {
-    if (refreshInterval > 0 && enabled) {
-      intervalRef.current = setInterval(() => {
-        fetchData()
-      }, refreshInterval)
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [refreshInterval, fetchData, enabled])
-
-  return {
-    data,
-    error,
-    isLoading,
-    mutate,
-  }
+  return useSpotifyEndpoint(options)
 }

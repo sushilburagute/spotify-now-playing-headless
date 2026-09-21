@@ -20,3 +20,8 @@ export {
   type UseTopArtistsOptions,
   type UseTopArtistsResult,
 } from './useTopArtists'
+
+export type {
+  SpotifyFetcher,
+  SpotifyFetcherOptions,
+} from './useSpotifyEndpoint'

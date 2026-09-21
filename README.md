@@ -1,317 +1,215 @@
 # spotify-now-playing-headless
 
-> Headless Spotify integration for portfolio websites. Now Playing, Top Tracks, and Top Artists.
-
-A lightweight, TypeScript-first package for integrating Spotify data into your portfolio website. Completely unstyled and framework-agnostic with first-class support for React and Next.js.
+Headless, TypeScript-first Spotify data for portfolio sites and personal apps.
+It provides a server-side Spotify client, React hooks, and Next.js App Router
+route factories for Now Playing, Top Tracks, and Top Artists.
 
 ## Features
 
-- **100% Headless** - No built-in styles, bring your own UI
-- **TypeScript-first** - Full type safety with comprehensive types
-- **Framework-agnostic core** - Use with any JavaScript framework
-- **React hooks** - Built-in hooks with auto-refresh support
-- **Next.js helpers** - One-line API route creation with ISR support
-- **Three Spotify APIs** - Now Playing, Top Tracks, and Top Artists
-- **OAuth handled** - Refresh token flow built-in
-- **Error handling** - Typed errors with retry information
-- **Tree-shakeable** - Only bundle what you use (ESM + CJS)
+- Unstyled and UI-agnostic
+- ESM and CommonJS builds with TypeScript declarations
+- Server-side access-token caching and one automatic retry after a `401`
+- Refresh-token rotation callback
+- Typed rate-limit and authentication errors
+- Abort-safe React hooks with optional polling
+- Configurable caching for Next.js Route Handlers
+
+## Requirements
+
+- Node.js 18 or newer for the server-side client
+- React 18 or newer for `spotify-now-playing-headless/react`
+- Next.js 13 or newer for `spotify-now-playing-headless/nextjs`
 
 ## Installation
 
 ```bash
 npm install spotify-now-playing-headless
-# or
-yarn add spotify-now-playing-headless
-# or
-pnpm add spotify-now-playing-headless
 ```
 
-## Quick Start
+Use the explicit entry point for your environment:
 
-### Prerequisites
+```ts
+import { SpotifyClient } from 'spotify-now-playing-headless/core'
+import { useNowPlaying } from 'spotify-now-playing-headless/react'
+import { createNowPlayingRoute } from 'spotify-now-playing-headless/nextjs'
+```
 
-You'll need Spotify API credentials:
+## Next.js App Router
 
-1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Create an app
-3. Get your `Client ID` and `Client Secret`
-4. Generate a refresh token (see [Authentication](#authentication))
+Keep all Spotify credentials in the server-only Route Handler:
 
-### Next.js Example
-
-```typescript
+```ts
 // app/api/now-playing/route.ts
 import { createNowPlayingRoute } from 'spotify-now-playing-headless/nextjs'
+
+export const dynamic = 'force-dynamic'
 
 export const GET = createNowPlayingRoute({
   clientId: process.env.SPOTIFY_CLIENT_ID!,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
   refreshToken: process.env.SPOTIFY_REFRESH_TOKEN!,
+  cacheControl: 'public, s-maxage=30, stale-while-revalidate=30',
+  onRefreshToken: async (refreshToken) => {
+    // Persist this value in your secrets manager or database.
+  },
 })
-
-export const revalidate = 120 // Revalidate every 2 minutes
 ```
 
+Consume the endpoint from a Client Component:
+
 ```tsx
-// components/NowPlaying.tsx
 'use client'
 
 import { useNowPlaying } from 'spotify-now-playing-headless/react'
 
 export function NowPlaying() {
-  const { data, isLoading, error } = useNowPlaying({
+  const { data, error, isLoading, mutate } = useNowPlaying({
     endpoint: '/api/now-playing',
+    refreshInterval: 30_000,
   })
 
-  if (isLoading) return <div>Loading...</div>
-  if (error) return <div>Error: {error.message}</div>
-  if (!data?.isPlaying) return <div>Not playing anything</div>
+  if (isLoading && !data) return <p>Loading…</p>
+  if (error) return <p>Could not load Spotify: {error.message}</p>
+  if (!data?.isPlaying) return <p>Nothing is playing.</p>
 
   return (
-    <div>
-      <h3>Now Playing</h3>
-      <a href={data.songUrl} target="_blank" rel="noopener noreferrer">
-        <img src={data.albumImageUrl} alt={data.album} />
-        <div>
-          <p>{data.title}</p>
-          <p>{data.artist}</p>
-        </div>
-      </a>
-    </div>
+    <article>
+      <img src={data.albumImageUrl} alt={data.album} />
+      <a href={data.songUrl}>{data.title}</a>
+      <p>{data.artist}</p>
+      <button type="button" onClick={() => void mutate()}>
+        Refresh
+      </button>
+    </article>
   )
 }
 ```
 
-## API Reference
+Next.js Route Handlers are dynamic by default in current Next.js releases. The
+route factories use HTTP `Cache-Control`; they do not configure ISR. Set
+`cacheControl: false` to omit the header.
 
-### Core
+## React + Vite
 
-The core module provides a framework-agnostic Spotify API client.
+The React hooks work in Vite. Vite itself does not provide a production API
+server, so the browser must call a separate Node/serverless endpoint that uses
+`SpotifyClient`.
 
-#### `SpotifyClient`
+```tsx
+import { useNowPlaying } from 'spotify-now-playing-headless/react'
 
-```typescript
+export function NowPlaying() {
+  const result = useNowPlaying({ endpoint: '/api/now-playing' })
+  return <p>{result.data?.title ?? 'Nothing playing'}</p>
+}
+```
+
+Never expose `clientSecret` or `refreshToken` through `VITE_*` variables. See
+[`examples/react-vite`](examples/react-vite) for a Vite app with a small Node
+backend.
+
+Next.js does not use Vite. A package can be consumed by Next.js and by Vite
+applications separately, but Vite is not a supported replacement for the
+Next.js bundler.
+
+## Core client
+
+```ts
 import { SpotifyClient } from 'spotify-now-playing-headless/core'
 
 const spotify = new SpotifyClient({
-  clientId: 'your-client-id',
-  clientSecret: 'your-client-secret',
-  refreshToken: 'your-refresh-token',
+  clientId: process.env.SPOTIFY_CLIENT_ID!,
+  clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
+  refreshToken: process.env.SPOTIFY_REFRESH_TOKEN!,
+  onRefreshToken: async (refreshToken) => {
+    await saveRefreshToken(refreshToken)
+  },
 })
 
-// Get now playing
 const nowPlaying = await spotify.getNowPlaying()
-
-// Get top tracks (default: 10, max: 50)
 const topTracks = await spotify.getTopTracks(10)
-
-// Get top artists (default: 10, max: 50)
 const topArtists = await spotify.getTopArtists(10)
 ```
 
-### React Hooks
+Access tokens are reused until shortly before expiry. Concurrent requests share
+one token refresh. If Spotify returns a new refresh token, the client uses it
+immediately and calls `onRefreshToken`; production applications should persist
+that value.
 
-The React module provides headless hooks for data fetching.
+### Custom endpoints
 
-#### `useNowPlaying`
+Endpoint overrides are useful for tests, proxies, or compatible API gateways:
 
-```typescript
-import { useNowPlaying } from 'spotify-now-playing-headless/react'
-
-const { data, error, isLoading, mutate } = useNowPlaying({
-  endpoint: '/api/now-playing',
-  refreshInterval: 30000, // Optional: auto-refresh every 30s
-  enabled: true, // Optional: enable/disable fetching
+```ts
+const spotify = new SpotifyClient({
+  clientId: 'client-id',
+  clientSecret: 'client-secret',
+  refreshToken: 'refresh-token',
+  endpoints: {
+    token: 'https://auth.example.com/token',
+    nowPlaying: 'https://api.example.com/now-playing',
+    topTracks: 'https://api.example.com/top-tracks',
+    topArtists: 'https://api.example.com/top-artists',
+  },
 })
 ```
 
-#### `useTopTracks`
+## React hooks
 
-```typescript
-import { useTopTracks } from 'spotify-now-playing-headless/react'
+The package exports `useNowPlaying`, `useTopTracks`, and `useTopArtists`. Each
+accepts:
 
-const { data, error, isLoading, mutate } = useTopTracks({
-  endpoint: '/api/top-tracks',
-})
-```
+- `endpoint`: URL of your server endpoint
+- `enabled`: whether requests should run; defaults to `true`
+- `refreshInterval`: polling interval in milliseconds; defaults to `0`
+- `fetcher`: optional `(url, { signal }) => Promise<T>` implementation
 
-#### `useTopArtists`
+Each returns `{ data, error, isLoading, mutate }`. `mutate()` returns a promise,
+aborts an older in-flight request, and can be awaited.
 
-```typescript
-import { useTopArtists } from 'spotify-now-playing-headless/react'
+## Next.js route factories
 
-const { data, error, isLoading, mutate } = useTopArtists({
-  endpoint: '/api/top-artists',
-})
-```
+- `createNowPlayingRoute(options)`
+- `createTopTracksRoute({ ...options, limit })`
+- `createTopArtistsRoute({ ...options, limit })`
 
-**Hook Options:**
+All accept `cacheControl?: string | false`. Limits are normalized to an integer
+between 1 and 50.
 
-- `endpoint` - API endpoint to fetch from
-- `fetcher` - Optional custom fetcher function
-- `refreshInterval` - Optional auto-refresh interval in ms (0 = disabled)
-- `enabled` - Optional enable/disable fetching (default: true)
-
-### Next.js API Routes
-
-The Next.js module provides route factories for easy API route creation.
-
-#### `createNowPlayingRoute`
-
-```typescript
-import { createNowPlayingRoute } from 'spotify-now-playing-headless/nextjs'
-
-export const GET = createNowPlayingRoute({
-  clientId: process.env.SPOTIFY_CLIENT_ID!,
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-  refreshToken: process.env.SPOTIFY_REFRESH_TOKEN!,
-})
-
-export const revalidate = 120
-```
-
-#### `createTopTracksRoute`
-
-```typescript
-import { createTopTracksRoute } from 'spotify-now-playing-headless/nextjs'
-
-export const GET = createTopTracksRoute({
-  clientId: process.env.SPOTIFY_CLIENT_ID!,
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-  refreshToken: process.env.SPOTIFY_REFRESH_TOKEN!,
-  limit: 10, // Optional: number of tracks (default: 10, max: 50)
-})
-
-export const revalidate = 3640 // Revalidate every ~1 hour
-```
-
-#### `createTopArtistsRoute`
-
-```typescript
-import { createTopArtistsRoute } from 'spotify-now-playing-headless/nextjs'
-
-export const GET = createTopArtistsRoute({
-  clientId: process.env.SPOTIFY_CLIENT_ID!,
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-  refreshToken: process.env.SPOTIFY_REFRESH_TOKEN!,
-  limit: 10, // Optional: number of artists (default: 10, max: 50)
-})
-
-export const revalidate = 3640
-```
-
-## TypeScript Types
-
-All types are exported from the core module:
-
-```typescript
-import type {
-  SpotifyConfig,
-  NowPlayingResponse,
-  TopTracksResponse,
-  TopArtistsResponse,
-  SpotifyError,
-  Song,
-  Artist,
-  AlbumArt,
-} from 'spotify-now-playing-headless/core'
-```
-
-### `NowPlayingResponse`
-
-```typescript
-type NowPlayingResponse = {
-  album: string
-  albumImageUrl: string
-  artist: string // Comma-separated list
-  isPlaying: boolean
-  songUrl: string
-  title: string
-}
-```
-
-### `TopTracksResponse`
-
-```typescript
-type TopTracksResponse = {
-  tracks: Song[]
-}
-
-type Song = {
-  songUrl: string
-  artist: string
-  title: string
-  albumArt: AlbumArt
-}
-```
-
-### `TopArtistsResponse`
-
-```typescript
-type TopArtistsResponse = {
-  artists: Artist[]
-}
-
-type Artist = {
-  name: string
-  url: string
-  image?: {
-    url: string
-    height: number
-    width: number
-  }
-  followers?: number
-  genres?: string[]
-}
-```
+The factories target App Router `route.ts` files. With the Pages Router, use
+`SpotifyClient` directly inside `pages/api/*` and translate its result to the
+Pages Router response object.
 
 ## Authentication
 
-To use this package, you need a Spotify refresh token. Here's how to get one:
+Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+and register a redirect URI. Spotify requires HTTPS except for explicit
+loopback IPs; `localhost` is not accepted. For local development, use for
+example:
 
-### Step 1: Create a Spotify App
-
-1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Click "Create app"
-3. Fill in the details:
-   - **App name**: Your Portfolio
-   - **App description**: For personal website
-   - **Redirect URI**: `http://localhost:3000/api/callback` (or your domain)
-4. Save your **Client ID** and **Client Secret**
-
-### Step 2: Get Authorization Code
-
-Visit this URL in your browser (replace `CLIENT_ID` with your Client ID):
-
-```
-https://accounts.spotify.com/authorize?client_id=CLIENT_ID&response_type=code&redirect_uri=http://localhost:3000/api/callback&scope=user-read-currently-playing%20user-top-read
+```text
+http://127.0.0.1:3000/api/callback
 ```
 
-After authorizing, you'll be redirected to:
+Request authorization with the scopes used by this package:
 
+```text
+https://accounts.spotify.com/authorize?client_id=CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fapi%2Fcallback&scope=user-read-currently-playing%20user-top-read&state=RANDOM_CSRF_VALUE
 ```
-http://localhost:3000/api/callback?code=AUTHORIZATION_CODE
-```
 
-Copy the `AUTHORIZATION_CODE` from the URL.
-
-### Step 3: Exchange for Refresh Token
-
-Run this command (replace `CLIENT_ID`, `CLIENT_SECRET`, and `AUTHORIZATION_CODE`):
+Exchange the returned code from a trusted server. The redirect URI must exactly
+match the authorization request and Dashboard entry:
 
 ```bash
 curl -X POST https://accounts.spotify.com/api/token \
+  -u "CLIENT_ID:CLIENT_SECRET" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
   -d "code=AUTHORIZATION_CODE" \
-  -d "redirect_uri=http://localhost:3000/api/callback" \
-  -d "client_id=CLIENT_ID" \
-  -d "client_secret=CLIENT_SECRET"
+  -d "redirect_uri=http://127.0.0.1:3000/api/callback"
 ```
 
-The response will include a `refresh_token`. Save this - it doesn't expire!
-
-### Step 4: Add to Environment Variables
+Store the refresh token as a server secret:
 
 ```env
 SPOTIFY_CLIENT_ID=your_client_id
@@ -319,131 +217,41 @@ SPOTIFY_CLIENT_SECRET=your_client_secret
 SPOTIFY_REFRESH_TOKEN=your_refresh_token
 ```
 
-## Advanced Usage
+Spotify currently documents a six-month lifetime for Dashboard-issued refresh
+tokens. Reauthorize after expiration. Always validate the OAuth `state` value
+in a real callback handler.
 
-### Custom Fetcher
+## Errors
 
-You can provide your own fetcher function (e.g., using SWR or React Query):
+`SpotifyError` extends `Error` and has these codes:
 
-```typescript
-import useSWR from 'swr'
-import { useNowPlaying } from 'spotify-now-playing-headless/react'
+- `AUTH_FAILED`: credentials, token, or required scopes are invalid
+- `RATE_LIMITED`: retry later; `retryAfter` may contain seconds
+- `NETWORK_ERROR`: Spotify or the network returned an operational failure
+- `INVALID_CONFIG`: a required constructor value is missing
+- `UNKNOWN_ERROR`: unexpected data, parsing, or persistence failure
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
-const { data } = useNowPlaying({
-  endpoint: '/api/now-playing',
-  fetcher,
-})
-```
-
-### Auto-Refresh
-
-Enable automatic data refreshing:
-
-```typescript
-const { data } = useNowPlaying({
-  endpoint: '/api/now-playing',
-  refreshInterval: 30000, // Refresh every 30 seconds
-})
-```
-
-### Manual Refresh
-
-Trigger a manual refetch:
-
-```typescript
-const { data, mutate } = useNowPlaying({
-  endpoint: '/api/now-playing',
-})
-
-// Later...
-<button onClick={() => mutate()}>Refresh</button>
-```
-
-### Conditional Fetching
-
-Control when data is fetched:
-
-```typescript
-const [enabled, setEnabled] = useState(false)
-
-const { data } = useNowPlaying({
-  endpoint: '/api/now-playing',
-  enabled, // Only fetch when enabled is true
-})
-```
-
-### Error Handling
-
-All methods return typed errors:
-
-```typescript
-try {
-  const data = await spotify.getNowPlaying()
-} catch (err) {
-  const error = err as SpotifyError
-
-  if (error.code === 'RATE_LIMITED') {
-    console.log(`Rate limited. Retry after ${error.retryAfter} seconds`)
-  } else if (error.code === 'AUTH_FAILED') {
-    console.log('Authentication failed. Check your credentials.')
-  }
-}
-```
-
-**Error Codes:**
-
-- `AUTH_FAILED` - Invalid credentials or expired token
-- `RATE_LIMITED` - Too many requests (includes retryAfter)
-- `NETWORK_ERROR` - Network or API error
-- `NOT_PLAYING` - No track currently playing
-- `INVALID_CONFIG` - Missing required configuration
-- `UNKNOWN_ERROR` - Unexpected error
-
-### Custom Endpoints (Advanced)
-
-Override Spotify API endpoints:
-
-```typescript
-const spotify = new SpotifyClient({
-  clientId: 'your-client-id',
-  clientSecret: 'your-client-secret',
-  refreshToken: 'your-refresh-token',
-  endpoints: {
-    nowPlaying: 'https://custom-api.com/now-playing',
-    topTracks: 'https://custom-api.com/top-tracks',
-    topArtists: 'https://custom-api.com/top-artists',
-    token: 'https://custom-auth.com/token',
-  },
-})
-```
+`NOT_PLAYING` remains in the public type for compatibility. No playback is
+represented by `{ isPlaying: false }`, not by an exception.
 
 ## Examples
 
-Check out the `/examples` directory for complete working examples:
+- [`examples/nextjs-app-router`](examples/nextjs-app-router)
+- [`examples/react-vite`](examples/react-vite)
 
-- **Next.js App Router** - Full integration with App Router
-- **Next.js Pages Router** - Legacy Pages Router example
-- **React + Vite** - Standalone React application
+## Development
 
-## Contributing
+```bash
+yarn install
+yarn check
+yarn test:coverage
+npm pack --dry-run
+```
 
-Contributions are welcome! Please open an issue or pull request.
+CI tests supported Node.js releases and validates the packed artifact. Publishing
+is triggered by a GitHub Release and requires an `NPM_TOKEN` secret in the `npm`
+environment.
 
 ## License
 
 MIT
-
-## Acknowledgments
-
-Built with:
-
-- [tsup](https://github.com/egoist/tsup) - TypeScript bundler
-- [Vitest](https://vitest.dev) - Testing framework
-- [React](https://react.dev) - UI library (peer dependency)
-- [Next.js](https://nextjs.org) - React framework (peer dependency)
-
----
-
-**Made with ❤️ for portfolio websites**

@@ -8,7 +8,11 @@ const mockTopArtists: TopArtistsResponse = {
     {
       name: 'Artist 1',
       url: 'https://open.spotify.com/artist/1',
-      image: { url: 'https://example.com/artist1.jpg', height: 640, width: 640 },
+      image: {
+        url: 'https://example.com/artist1.jpg',
+        height: 640,
+        width: 640,
+      },
       followers: 10000,
       genres: ['indie', 'rock'],
     },
@@ -81,8 +85,14 @@ describe('useTopArtists', () => {
     const emptyArtists: TopArtistsResponse = { artists: [] }
     global.fetch = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => emptyArtists } as Response)
-      .mockResolvedValueOnce({ ok: true, json: async () => mockTopArtists } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => emptyArtists,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockTopArtists,
+      } as Response)
 
     const { result } = renderHook(() =>
       useTopArtists({ endpoint: '/api/top-artists' })
@@ -108,15 +118,19 @@ describe('useTopArtists', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(customFetcher).toHaveBeenCalledWith('/api/top-artists')
+    expect(customFetcher).toHaveBeenCalledWith(
+      '/api/top-artists',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
     expect(result.current.data).toEqual(mockTopArtists)
   })
 
   it('auto-refreshes at the given interval', async () => {
     vi.useFakeTimers()
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, json: async () => mockTopArtists } as Response)
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockTopArtists,
+    } as Response)
 
     renderHook(() =>
       useTopArtists({ endpoint: '/api/top-artists', refreshInterval: 5000 })

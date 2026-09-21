@@ -77,11 +77,20 @@ describe('useNowPlaying', () => {
   })
 
   it('refetches on mutate()', async () => {
-    const notPlaying: NowPlayingResponse = { ...mockNowPlaying, isPlaying: false }
+    const notPlaying: NowPlayingResponse = {
+      ...mockNowPlaying,
+      isPlaying: false,
+    }
     global.fetch = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => notPlaying } as Response)
-      .mockResolvedValueOnce({ ok: true, json: async () => mockNowPlaying } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => notPlaying,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockNowPlaying,
+      } as Response)
 
     const { result } = renderHook(() =>
       useNowPlaying({ endpoint: '/api/now-playing' })
@@ -107,15 +116,19 @@ describe('useNowPlaying', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(customFetcher).toHaveBeenCalledWith('/api/now-playing')
+    expect(customFetcher).toHaveBeenCalledWith(
+      '/api/now-playing',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
     expect(result.current.data).toEqual(mockNowPlaying)
   })
 
   it('auto-refreshes at the given interval', async () => {
     vi.useFakeTimers()
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, json: async () => mockNowPlaying } as Response)
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockNowPlaying,
+    } as Response)
 
     renderHook(() =>
       useNowPlaying({ endpoint: '/api/now-playing', refreshInterval: 5000 })
@@ -134,5 +147,41 @@ describe('useNowPlaying', () => {
     })
 
     expect(global.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('aborts an in-flight request when unmounted', () => {
+    let signal: AbortSignal | undefined
+    const fetcher = vi.fn((_url: string, options?: { signal: AbortSignal }) => {
+      signal = options?.signal
+      return new Promise<NowPlayingResponse>(() => undefined)
+    })
+
+    const { unmount } = renderHook(() =>
+      useNowPlaying({ endpoint: '/api/now-playing', fetcher })
+    )
+
+    unmount()
+
+    expect(signal?.aborted).toBe(true)
+  })
+
+  it('aborts and clears loading when disabled during a request', async () => {
+    let signal: AbortSignal | undefined
+    const fetcher = vi.fn((_url: string, options?: { signal: AbortSignal }) => {
+      signal = options?.signal
+      return new Promise<NowPlayingResponse>(() => undefined)
+    })
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        useNowPlaying({ endpoint: '/api/now-playing', fetcher, enabled }),
+      { initialProps: { enabled: true } }
+    )
+
+    expect(result.current.isLoading).toBe(true)
+    rerender({ enabled: false })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(signal?.aborted).toBe(true)
   })
 })

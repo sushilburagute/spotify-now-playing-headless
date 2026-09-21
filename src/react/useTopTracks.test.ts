@@ -79,8 +79,14 @@ describe('useTopTracks', () => {
     const emptyTracks: TopTracksResponse = { tracks: [] }
     global.fetch = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => emptyTracks } as Response)
-      .mockResolvedValueOnce({ ok: true, json: async () => mockTopTracks } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => emptyTracks,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockTopTracks,
+      } as Response)
 
     const { result } = renderHook(() =>
       useTopTracks({ endpoint: '/api/top-tracks' })
@@ -106,15 +112,19 @@ describe('useTopTracks', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(customFetcher).toHaveBeenCalledWith('/api/top-tracks')
+    expect(customFetcher).toHaveBeenCalledWith(
+      '/api/top-tracks',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
     expect(result.current.data).toEqual(mockTopTracks)
   })
 
   it('auto-refreshes at the given interval', async () => {
     vi.useFakeTimers()
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, json: async () => mockTopTracks } as Response)
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockTopTracks,
+    } as Response)
 
     renderHook(() =>
       useTopTracks({ endpoint: '/api/top-tracks', refreshInterval: 5000 })

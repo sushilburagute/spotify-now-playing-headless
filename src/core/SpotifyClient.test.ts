@@ -28,6 +28,9 @@ describe('SpotifyClient', () => {
       expect(() => new SpotifyClient(invalidConfig)).toThrow(
         'Spotify clientId is required'
       )
+      expect(() => new SpotifyClient(invalidConfig)).toThrow(
+        expect.objectContaining({ code: 'INVALID_CONFIG' })
+      )
     })
 
     it('should throw error if clientSecret is missing', () => {
@@ -73,6 +76,84 @@ describe('SpotifyClient', () => {
     })
   })
 
+  describe('token lifecycle', () => {
+    it('reuses a valid access token and persists token rotation', async () => {
+      const onRefreshToken = vi.fn()
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            access_token: 'access-token',
+            expires_in: 3600,
+            refresh_token: 'rotated-refresh-token',
+          }),
+        })
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => ({ items: [] }),
+        })
+      global.fetch = mockFetch
+
+      const client = new SpotifyClient({ ...config, onRefreshToken })
+      await client.getTopTracks()
+      await client.getTopTracks()
+
+      expect(onRefreshToken).toHaveBeenCalledWith('rotated-refresh-token')
+      expect(mockFetch).toHaveBeenCalledTimes(3)
+      expect(mockFetch.mock.calls[0][0]).toContain('/api/token')
+    })
+
+    it('refreshes and retries once after an API 401', async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'stale', expires_in: 3600 }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'fresh', expires_in: 3600 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ is_playing: false, item: null }),
+        })
+      global.fetch = mockFetch
+
+      const client = new SpotifyClient(config)
+      const result = await client.getNowPlaying()
+
+      expect(result.isPlaying).toBe(false)
+      expect(mockFetch).toHaveBeenCalledTimes(4)
+      expect(mockFetch.mock.calls[3][1]).toMatchObject({
+        headers: { Authorization: 'Bearer fresh' },
+      })
+    })
+
+    it('handles rate limiting from the token endpoint', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        headers: new Headers({ 'Retry-After': '15' }),
+      })
+
+      const client = new SpotifyClient(config)
+
+      await expect(client.getNowPlaying()).rejects.toMatchObject({
+        code: 'RATE_LIMITED',
+        retryAfter: 15,
+      })
+    })
+  })
+
   describe('getNowPlaying', () => {
     it('should return now playing data when track is playing', async () => {
       const mockFetch = vi.fn()
@@ -81,7 +162,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock now playing response
@@ -95,7 +179,9 @@ describe('SpotifyClient', () => {
             artists: [{ name: 'Test Artist' }],
             album: {
               name: 'Test Album',
-              images: [{ url: 'https://test.com/image.jpg', height: 640, width: 640 }],
+              images: [
+                { url: 'https://test.com/image.jpg', height: 640, width: 640 },
+              ],
             },
             external_urls: {
               spotify: 'https://open.spotify.com/track/123',
@@ -124,7 +210,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock 204 No Content response
@@ -145,7 +234,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock now playing response with null item
@@ -164,6 +256,53 @@ describe('SpotifyClient', () => {
       expect(result.isPlaying).toBe(false)
     })
 
+    it('should map a currently playing podcast episode', async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            access_token: 'test-access-token',
+            expires_in: 3600,
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            is_playing: true,
+            item: {
+              type: 'episode',
+              name: 'Episode 1',
+              show: { name: 'Test Podcast' },
+              images: [
+                {
+                  url: 'https://example.com/podcast.jpg',
+                  height: 640,
+                  width: 640,
+                },
+              ],
+              external_urls: {
+                spotify: 'https://open.spotify.com/episode/1',
+              },
+            },
+          }),
+        })
+      global.fetch = mockFetch
+
+      const client = new SpotifyClient(config)
+      const result = await client.getNowPlaying()
+
+      expect(result).toEqual({
+        album: 'Test Podcast',
+        albumImageUrl: 'https://example.com/podcast.jpg',
+        artist: 'Test Podcast',
+        isPlaying: true,
+        songUrl: 'https://open.spotify.com/episode/1',
+        title: 'Episode 1',
+      })
+    })
+
     it('should handle rate limiting (429)', async () => {
       const mockFetch = vi.fn()
       global.fetch = mockFetch
@@ -171,7 +310,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock 429 rate limit response
@@ -216,7 +358,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock top tracks response
@@ -232,8 +377,16 @@ describe('SpotifyClient', () => {
               album: {
                 images: [
                   { url: 'https://test.com/1.jpg', height: 640, width: 640 },
-                  { url: 'https://test.com/1-medium.jpg', height: 300, width: 300 },
-                  { url: 'https://test.com/1-small.jpg', height: 64, width: 64 },
+                  {
+                    url: 'https://test.com/1-medium.jpg',
+                    height: 300,
+                    width: 300,
+                  },
+                  {
+                    url: 'https://test.com/1-small.jpg',
+                    height: 64,
+                    width: 64,
+                  },
                 ],
               },
             },
@@ -264,7 +417,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock top tracks response
@@ -280,6 +436,28 @@ describe('SpotifyClient', () => {
       const url = mockFetch.mock.calls[1][0]
       expect(url).toContain('limit=50')
     })
+
+    it('should normalize invalid limits to Spotify supported values', async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'token', expires_in: 3600 }),
+        })
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => ({ items: [] }),
+        })
+      global.fetch = mockFetch
+
+      const client = new SpotifyClient(config)
+      await client.getTopTracks(0)
+      await client.getTopTracks(4.9)
+
+      expect(mockFetch.mock.calls[1][0]).toContain('limit=1')
+      expect(mockFetch.mock.calls[2][0]).toContain('limit=4')
+    })
   })
 
   describe('getTopArtists', () => {
@@ -290,7 +468,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock top artists response
@@ -302,7 +483,13 @@ describe('SpotifyClient', () => {
             {
               name: 'Artist 1',
               external_urls: { spotify: 'https://open.spotify.com/artist/1' },
-              images: [{ url: 'https://test.com/artist1.jpg', height: 640, width: 640 }],
+              images: [
+                {
+                  url: 'https://test.com/artist1.jpg',
+                  height: 640,
+                  width: 640,
+                },
+              ],
               followers: { total: 1000 },
               genres: ['rock', 'indie'],
             },
@@ -334,7 +521,10 @@ describe('SpotifyClient', () => {
       // Mock token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: 'test-access-token' }),
+        json: async () => ({
+          access_token: 'test-access-token',
+          expires_in: 3600,
+        }),
       })
 
       // Mock top artists response

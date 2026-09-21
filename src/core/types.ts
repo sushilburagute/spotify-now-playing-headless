@@ -8,6 +8,11 @@ export type SpotifyConfig = {
   clientSecret: string
   /** Spotify Refresh Token obtained through OAuth flow */
   refreshToken: string
+  /**
+   * Called when Spotify rotates the refresh token.
+   * Persist the new value so it survives process restarts and deployments.
+   */
+  onRefreshToken?: (refreshToken: string) => void | Promise<void>
   /** Optional endpoint overrides for custom Spotify API instances */
   endpoints?: {
     nowPlaying?: string
@@ -103,7 +108,7 @@ export class SpotifyError extends Error {
     public readonly code: SpotifyErrorCode,
     message: string,
     public readonly retryAfter?: number,
-    public readonly originalError?: unknown,
+    public readonly originalError?: unknown
   ) {
     super(message)
     this.name = 'SpotifyError'
@@ -120,6 +125,7 @@ export type SpotifyTokenResponse = {
   access_token: string
   token_type: string
   expires_in: number
+  refresh_token?: string
   scope?: string
 }
 
@@ -129,17 +135,7 @@ export type SpotifyTokenResponse = {
  */
 export type SpotifyNowPlayingApiResponse = {
   is_playing: boolean
-  item: {
-    name: string
-    artists: Array<{ name: string }>
-    album: {
-      name: string
-      images: Array<{ url: string; height: number; width: number }>
-    }
-    external_urls: {
-      spotify: string
-    }
-  } | null
+  item: SpotifyTrackObject | SpotifyEpisodeObject | null
 }
 
 /**
@@ -147,13 +143,31 @@ export type SpotifyNowPlayingApiResponse = {
  * @internal
  */
 export type SpotifyTrackObject = {
+  type?: 'track'
   name: string
   artists: Array<{ name: string }>
   external_urls: {
     spotify: string
   }
   album: {
+    name?: string
     images: Array<{ url: string; height: number; width: number }>
+  }
+}
+
+/**
+ * Raw Spotify API episode object
+ * @internal
+ */
+export type SpotifyEpisodeObject = {
+  type: 'episode'
+  name: string
+  show: {
+    name: string
+  }
+  images: Array<{ url: string; height: number; width: number }>
+  external_urls: {
+    spotify: string
   }
 }
 

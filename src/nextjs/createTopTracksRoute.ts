@@ -1,14 +1,19 @@
 import { SpotifyClient } from '../core/SpotifyClient'
-import { SpotifyError } from '../core/types'
 import type { SpotifyConfig } from '../core/types'
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  type SpotifyRouteOptions,
+} from './routeUtils'
 
 /**
  * Options for creating a top tracks route
  */
-export type CreateTopTracksRouteOptions = SpotifyConfig & {
-  /** Number of tracks to return. Default: 10, Max: 50 */
-  limit?: number
-}
+export type CreateTopTracksRouteOptions = SpotifyConfig &
+  SpotifyRouteOptions & {
+    /** Number of tracks to return. Default: 10, Max: 50 */
+    limit?: number
+  }
 
 /**
  * Create a Next.js App Router API route handler for Top Tracks
@@ -31,61 +36,28 @@ export type CreateTopTracksRouteOptions = SpotifyConfig & {
  *   limit: 10,
  * })
  *
- * // Optional: Configure ISR revalidation
- * export const revalidate = 3600 // Revalidate every 1 hour
+ * export const dynamic = 'force-dynamic'
  * ```
  */
 export function createTopTracksRoute(options: CreateTopTracksRouteOptions) {
-  const { limit = 10, ...config } = options
-  const client = new SpotifyClient(config)
+  const { limit = 10, cacheControl, ...config } = options
+  let client: SpotifyClient | undefined
+  let initializationError: unknown
+
+  try {
+    client = new SpotifyClient(config)
+  } catch (err) {
+    initializationError = err
+  }
 
   return async function GET() {
     try {
+      if (!client) throw initializationError
       const data = await client.getTopTracks(limit)
 
-      return Response.json(data, {
-        headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
-        },
-      })
+      return createSuccessResponse(data, { cacheControl })
     } catch (err) {
-      if (err instanceof SpotifyError) {
-        if (err.code === 'AUTH_FAILED') {
-          return Response.json(
-            {
-              error: 'Authentication failed',
-              message: err.message,
-            },
-            { status: 401 }
-          )
-        }
-
-        if (err.code === 'RATE_LIMITED') {
-          return Response.json(
-            {
-              error: 'Rate limited',
-              message: err.message,
-              retryAfter: err.retryAfter,
-            },
-            {
-              status: 429,
-              headers: err.retryAfter
-                ? { 'Retry-After': err.retryAfter.toString() }
-                : {},
-            }
-          )
-        }
-      }
-
-      // Generic error response
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      return Response.json(
-        {
-          error: 'Failed to fetch top tracks',
-          message,
-        },
-        { status: 500 }
-      )
+      return createErrorResponse(err, 'top tracks')
     }
   }
 }

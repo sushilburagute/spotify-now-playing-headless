@@ -59,6 +59,28 @@ describe('createNowPlayingRoute', () => {
     )
   })
 
+  it('supports custom and disabled Cache-Control headers', async () => {
+    const customGET = createNowPlayingRoute({
+      ...baseConfig,
+      cacheControl: 'private, max-age=10',
+    })
+    getMockClient().getNowPlaying.mockResolvedValue({ isPlaying: false })
+
+    const customResponse = await customGET()
+    expect(customResponse.headers.get('Cache-Control')).toBe(
+      'private, max-age=10'
+    )
+
+    const uncachedGET = createNowPlayingRoute({
+      ...baseConfig,
+      cacheControl: false,
+    })
+    getMockClient().getNowPlaying.mockResolvedValue({ isPlaying: false })
+
+    const uncachedResponse = await uncachedGET()
+    expect(uncachedResponse.headers.has('Cache-Control')).toBe(false)
+  })
+
   it('returns 401 on AUTH_FAILED', async () => {
     const GET = createNowPlayingRoute(baseConfig)
     getMockClient().getNowPlaying.mockRejectedValue(
@@ -101,12 +123,27 @@ describe('createNowPlayingRoute', () => {
 
   it('returns 500 on unexpected error', async () => {
     const GET = createNowPlayingRoute(baseConfig)
-    getMockClient().getNowPlaying.mockRejectedValue(new Error('Network failure'))
+    getMockClient().getNowPlaying.mockRejectedValue(
+      new Error('Network failure')
+    )
 
     const response = await GET()
     const body = await response.json()
 
     expect(response.status).toBe(500)
     expect(body.message).toBe('Network failure')
+  })
+
+  it('defers invalid configuration to a runtime response', async () => {
+    vi.mocked(SpotifyClient).mockImplementationOnce(() => {
+      throw new SpotifyError('INVALID_CONFIG', 'Spotify clientId is required')
+    })
+
+    const GET = createNowPlayingRoute({ ...baseConfig, clientId: '' })
+    const response = await GET()
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body.error).toBe('Invalid Spotify configuration')
   })
 })

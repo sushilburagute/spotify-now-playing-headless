@@ -7,6 +7,7 @@ import type {
   TopArtistsResponse,
   SpotifyNowPlayingApiResponse,
   SpotifyTrackObject,
+  SpotifyEpisodeObject,
   SpotifyArtistObject,
 } from './types'
 
@@ -28,6 +29,13 @@ type InternalSpotifyConfig = Omit<SpotifyConfig, 'endpoints'> & {
   endpoints: typeof DEFAULT_ENDPOINTS
 }
 
+type CachedAccessToken = {
+  value: string
+  expiresAt: number
+}
+
+const ACCESS_TOKEN_EXPIRY_BUFFER_MS = 30_000
+
 /**
  * Spotify API client for fetching Now Playing, Top Tracks, and Top Artists
  *
@@ -45,12 +53,14 @@ type InternalSpotifyConfig = Omit<SpotifyConfig, 'endpoints'> & {
 export class SpotifyClient {
   private config: InternalSpotifyConfig
   private basicAuth: string
+  private accessToken?: CachedAccessToken
+  private accessTokenPromise?: Promise<string>
 
   /**
    * Create a new Spotify API client
    *
    * @param config - Spotify API configuration with credentials
-   * @throws {Error} If required configuration is missing
+   * @throws {SpotifyError} If required configuration is missing
    */
   constructor(config: SpotifyConfig) {
     this.validateConfig(config)
@@ -63,7 +73,7 @@ export class SpotifyClient {
       },
     }
 
-    // btoa() is available in all modern browsers and Node.js ≥ 16,
+    // btoa() is available in all modern browsers and Node.js >= 16,
     // and works in Edge Runtime / Cloudflare Workers (unlike Buffer).
     this.basicAuth = btoa(`${config.clientId}:${config.clientSecret}`)
   }
@@ -74,13 +84,19 @@ export class SpotifyClient {
    */
   private validateConfig(config: SpotifyConfig): void {
     if (!config.clientId) {
-      throw new Error('Spotify clientId is required')
+      throw new SpotifyError('INVALID_CONFIG', 'Spotify clientId is required')
     }
     if (!config.clientSecret) {
-      throw new Error('Spotify clientSecret is required')
+      throw new SpotifyError(
+        'INVALID_CONFIG',
+        'Spotify clientSecret is required'
+      )
     }
     if (!config.refreshToken) {
-      throw new Error('Spotify refreshToken is required')
+      throw new SpotifyError(
+        'INVALID_CONFIG',
+        'Spotify refreshToken is required'
+      )
     }
   }
 
@@ -90,6 +106,31 @@ export class SpotifyClient {
    * @throws {SpotifyError} If token refresh fails
    */
   private async getAccessToken(): Promise<string> {
+    if (
+      this.accessToken &&
+      Date.now() < this.accessToken.expiresAt - ACCESS_TOKEN_EXPIRY_BUFFER_MS
+    ) {
+      return this.accessToken.value
+    }
+
+    if (this.accessTokenPromise) {
+      return this.accessTokenPromise
+    }
+
+    this.accessTokenPromise = this.refreshAccessToken()
+
+    try {
+      return await this.accessTokenPromise
+    } finally {
+      this.accessTokenPromise = undefined
+    }
+  }
+
+  /**
+   * Exchange the configured refresh token for an access token.
+   * @private
+   */
+  private async refreshAccessToken(): Promise<string> {
     try {
       const response = await fetch(this.config.endpoints.token, {
         method: 'POST',
@@ -103,14 +144,61 @@ export class SpotifyClient {
         }).toString(),
       })
 
-      if (!response.ok) {
+      if (response.status === 429) {
+        const retryAfter = this.getRetryAfter(response)
         throw new SpotifyError(
-          'AUTH_FAILED',
-          `Failed to refresh Spotify token: ${response.status} ${response.statusText}`,
+          'RATE_LIMITED',
+          'Spotify token endpoint rate limit exceeded',
+          retryAfter
+        )
+      }
+
+      if (!response.ok) {
+        const code =
+          response.status === 400 ||
+          response.status === 401 ||
+          response.status === 403
+            ? 'AUTH_FAILED'
+            : 'NETWORK_ERROR'
+        throw new SpotifyError(
+          code,
+          `Failed to refresh Spotify token: ${response.status} ${response.statusText}`
         )
       }
 
       const data: SpotifyTokenResponse = await response.json()
+
+      if (!data.access_token || !Number.isFinite(data.expires_in)) {
+        throw new SpotifyError(
+          'AUTH_FAILED',
+          'Spotify token response was missing required fields'
+        )
+      }
+
+      this.accessToken = {
+        value: data.access_token,
+        expiresAt: Date.now() + Math.max(data.expires_in, 0) * 1000,
+      }
+
+      if (
+        data.refresh_token &&
+        data.refresh_token !== this.config.refreshToken
+      ) {
+        this.config.refreshToken = data.refresh_token
+
+        try {
+          await this.config.onRefreshToken?.(data.refresh_token)
+        } catch (err) {
+          this.accessToken = undefined
+          throw new SpotifyError(
+            'UNKNOWN_ERROR',
+            'Failed to persist the rotated Spotify refresh token',
+            undefined,
+            err
+          )
+        }
+      }
+
       return data.access_token
     } catch (err) {
       if (err instanceof SpotifyError) {
@@ -120,9 +208,81 @@ export class SpotifyClient {
         'NETWORK_ERROR',
         'Failed to fetch Spotify access token',
         undefined,
-        err,
+        err
       )
     }
+  }
+
+  /**
+   * Fetch a Spotify API resource, retrying once with a fresh token on 401.
+   * @private
+   */
+  private async fetchSpotify(url: string): Promise<Response> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const accessToken = await this.getAccessToken()
+      let response: Response
+
+      try {
+        response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+      } catch (err) {
+        throw new SpotifyError(
+          'NETWORK_ERROR',
+          'Failed to reach the Spotify API',
+          undefined,
+          err
+        )
+      }
+
+      if (response.status === 401 && attempt === 0) {
+        this.accessToken = undefined
+        continue
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        throw new SpotifyError(
+          'AUTH_FAILED',
+          `Spotify API authorization failed: ${response.status} ${response.statusText}`
+        )
+      }
+
+      if (response.status === 429) {
+        throw new SpotifyError(
+          'RATE_LIMITED',
+          'Spotify API rate limit exceeded',
+          this.getRetryAfter(response)
+        )
+      }
+
+      if (!response.ok && response.status !== 204) {
+        throw new SpotifyError(
+          'NETWORK_ERROR',
+          `Spotify API error: ${response.status} ${response.statusText}`
+        )
+      }
+
+      return response
+    }
+
+    throw new SpotifyError('AUTH_FAILED', 'Spotify API authorization failed')
+  }
+
+  /** @private */
+  private getRetryAfter(response: Response): number | undefined {
+    const value = response.headers.get('Retry-After')
+    if (!value) return undefined
+
+    const seconds = Number.parseInt(value, 10)
+    return Number.isFinite(seconds) ? seconds : undefined
+  }
+
+  /** @private */
+  private normalizeLimit(limit: number): number {
+    if (!Number.isFinite(limit)) return 10
+    return Math.min(Math.max(Math.trunc(limit), 1), 50)
   }
 
   /**
@@ -141,13 +301,7 @@ export class SpotifyClient {
    */
   async getNowPlaying(): Promise<NowPlayingResponse> {
     try {
-      const accessToken = await this.getAccessToken()
-
-      const response = await fetch(this.config.endpoints.nowPlaying, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
+      const response = await this.fetchSpotify(this.config.endpoints.nowPlaying)
 
       // 204 = No content (nothing playing)
       if (response.status === 204) {
@@ -159,23 +313,6 @@ export class SpotifyClient {
           songUrl: '',
           title: '',
         }
-      }
-
-      // Handle rate limiting
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After')
-        throw new SpotifyError(
-          'RATE_LIMITED',
-          'Spotify API rate limit exceeded',
-          retryAfter ? parseInt(retryAfter, 10) : undefined,
-        )
-      }
-
-      if (!response.ok) {
-        throw new SpotifyError(
-          'NETWORK_ERROR',
-          `Spotify API error: ${response.status} ${response.statusText}`,
-        )
       }
 
       const song: SpotifyNowPlayingApiResponse = await response.json()
@@ -192,14 +329,7 @@ export class SpotifyClient {
         }
       }
 
-      return {
-        album: song.item.album.name,
-        albumImageUrl: song.item.album.images[0]?.url ?? '',
-        artist: song.item.artists.map((artist) => artist.name).join(', '),
-        isPlaying: song.is_playing,
-        songUrl: song.item.external_urls.spotify,
-        title: song.item.name,
-      }
+      return this.mapNowPlayingItem(song.item, song.is_playing)
     } catch (err) {
       if (err instanceof SpotifyError) {
         throw err
@@ -208,8 +338,34 @@ export class SpotifyClient {
         'UNKNOWN_ERROR',
         'Failed to fetch now playing',
         undefined,
-        err,
+        err
       )
+    }
+  }
+
+  /** @private */
+  private mapNowPlayingItem(
+    item: SpotifyTrackObject | SpotifyEpisodeObject,
+    isPlaying: boolean
+  ): NowPlayingResponse {
+    if (item.type === 'episode') {
+      return {
+        album: item.show.name,
+        albumImageUrl: item.images[0]?.url ?? '',
+        artist: item.show.name,
+        isPlaying,
+        songUrl: item.external_urls.spotify,
+        title: item.name,
+      }
+    }
+
+    return {
+      album: item.album.name ?? '',
+      albumImageUrl: item.album.images[0]?.url ?? '',
+      artist: item.artists.map((artist) => artist.name).join(', '),
+      isPlaying,
+      songUrl: item.external_urls.spotify,
+      title: item.name,
     }
   }
 
@@ -228,33 +384,10 @@ export class SpotifyClient {
    */
   async getTopTracks(limit: number = 10): Promise<TopTracksResponse> {
     try {
-      const accessToken = await this.getAccessToken()
-
       const url = new URL(this.config.endpoints.topTracks)
-      url.searchParams.set('limit', Math.min(limit, 50).toString())
+      url.searchParams.set('limit', this.normalizeLimit(limit).toString())
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-
-      // Handle rate limiting
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After')
-        throw new SpotifyError(
-          'RATE_LIMITED',
-          'Spotify API rate limit exceeded',
-          retryAfter ? parseInt(retryAfter, 10) : undefined,
-        )
-      }
-
-      if (!response.ok) {
-        throw new SpotifyError(
-          'NETWORK_ERROR',
-          `Spotify API error: ${response.status} ${response.statusText}`,
-        )
-      }
+      const response = await this.fetchSpotify(url.toString())
 
       const data: { items: SpotifyTrackObject[] } = await response.json()
 
@@ -278,7 +411,7 @@ export class SpotifyClient {
         'UNKNOWN_ERROR',
         'Failed to fetch top tracks',
         undefined,
-        err,
+        err
       )
     }
   }
@@ -298,33 +431,10 @@ export class SpotifyClient {
    */
   async getTopArtists(limit: number = 10): Promise<TopArtistsResponse> {
     try {
-      const accessToken = await this.getAccessToken()
-
       const url = new URL(this.config.endpoints.topArtists)
-      url.searchParams.set('limit', Math.min(limit, 50).toString())
+      url.searchParams.set('limit', this.normalizeLimit(limit).toString())
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-
-      // Handle rate limiting
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After')
-        throw new SpotifyError(
-          'RATE_LIMITED',
-          'Spotify API rate limit exceeded',
-          retryAfter ? parseInt(retryAfter, 10) : undefined,
-        )
-      }
-
-      if (!response.ok) {
-        throw new SpotifyError(
-          'NETWORK_ERROR',
-          `Spotify API error: ${response.status} ${response.statusText}`,
-        )
-      }
+      const response = await this.fetchSpotify(url.toString())
 
       const data: { items: SpotifyArtistObject[] } = await response.json()
 
@@ -351,7 +461,7 @@ export class SpotifyClient {
         'UNKNOWN_ERROR',
         'Failed to fetch top artists',
         undefined,
-        err,
+        err
       )
     }
   }

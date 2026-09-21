@@ -27,7 +27,11 @@ const mockArtists = {
     {
       name: 'Artist 1',
       url: 'https://open.spotify.com/artist/1',
-      image: { url: 'https://example.com/artist1.jpg', height: 640, width: 640 },
+      image: {
+        url: 'https://example.com/artist1.jpg',
+        height: 640,
+        width: 640,
+      },
       followers: 10000,
       genres: ['indie'],
     },
