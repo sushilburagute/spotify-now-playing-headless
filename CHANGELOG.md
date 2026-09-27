@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+
+- Sync the React + Vite example lockfile with the package version.
+- Include the linked package in the Next.js example's Turbopack root.
+
 ## 1.1.0
 
 - Cache access tokens and share concurrent refresh operations.

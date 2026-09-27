@@ -1,8 +1,10 @@
 import type { NextConfig } from 'next'
+import { resolve } from 'node:path'
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: process.cwd(),
+    // The example links to the package two directories above this app.
+    root: resolve(process.cwd(), '../..'),
   },
 }
 
