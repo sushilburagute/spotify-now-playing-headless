@@ -1,3 +1,10 @@
+import {
+  LuArrowDown,
+  LuArrowUpRight,
+  LuBriefcaseBusiness,
+} from 'react-icons/lu'
+import { SiGithub, SiNextdotjs, SiReact, SiVite } from 'react-icons/si'
+
 const repository =
   'https://github.com/sushilburagute/spotify-now-playing-headless'
 
@@ -32,7 +39,8 @@ export function Landing() {
             target="_blank"
             rel="noreferrer"
           >
-            Portfolio <span aria-hidden="true">↗</span>
+            <LuBriefcaseBusiness aria-hidden="true" /> Portfolio{' '}
+            <LuArrowUpRight className="external-arrow" aria-hidden="true" />
           </a>
           <a
             className="header-link"
@@ -42,7 +50,8 @@ export function Landing() {
             target="_blank"
             rel="noreferrer"
           >
-            GitHub <span aria-hidden="true">↗</span>
+            <SiGithub aria-hidden="true" /> GitHub{' '}
+            <LuArrowUpRight className="external-arrow" aria-hidden="true" />
           </a>
         </nav>
       </header>
@@ -77,10 +86,10 @@ export function Landing() {
               data-analytics-event="demo_open"
               data-analytics-framework="react"
             >
-              Enter playground <span aria-hidden="true">↗</span>
+              Enter playground <LuArrowUpRight aria-hidden="true" />
             </a>
             <a className="text-button" href="#choose-framework">
-              Explore both builds ↓
+              Explore both builds <LuArrowDown aria-hidden="true" />
             </a>
           </div>
           <div
@@ -165,10 +174,16 @@ export function Landing() {
             data-analytics-framework="react"
           >
             <span className="framework-index">01 / REACT</span>
-            <span className="framework-symbol">◉</span>
+            <span className="framework-logos" aria-hidden="true">
+              <SiReact className="framework-logo framework-logo--react" />
+              <span className="framework-logo-plus">+</span>
+              <SiVite className="framework-logo framework-logo--vite" />
+            </span>
             <strong>React + Vite</strong>
-            <span>See the hooks in a lightweight client app.</span>
-            <span className="framework-arrow">↗</span>
+            <span className="framework-description">
+              See the hooks in a lightweight client app.
+            </span>
+            <LuArrowUpRight className="framework-arrow" aria-hidden="true" />
           </a>
           <a
             href="/next/"
@@ -177,10 +192,14 @@ export function Landing() {
             data-analytics-framework="next"
           >
             <span className="framework-index">02 / NEXT.JS</span>
-            <span className="framework-symbol framework-symbol--next">N</span>
+            <span className="framework-logos" aria-hidden="true">
+              <SiNextdotjs className="framework-logo framework-logo--next" />
+            </span>
             <strong>Next.js App Router</strong>
-            <span>Explore the same interface in a Next.js app.</span>
-            <span className="framework-arrow">↗</span>
+            <span className="framework-description">
+              Explore the same interface in a Next.js app.
+            </span>
+            <LuArrowUpRight className="framework-arrow" aria-hidden="true" />
           </a>
         </div>
         <p className="landing-footnote">
@@ -204,21 +223,21 @@ export function Landing() {
             target="_blank"
             rel="noreferrer"
           >
-            Project source ↗
+            Project source <LuArrowUpRight aria-hidden="true" />
           </a>
           <a
             href="https://github.com/sushilburagute"
             target="_blank"
             rel="noreferrer"
           >
-            Sushil on GitHub ↗
+            Sushil on GitHub <LuArrowUpRight aria-hidden="true" />
           </a>
           <a
             href="/agent-guide.md"
             data-analytics-event="resource_open"
             data-analytics-resource="agent_guide"
           >
-            Implementation guide ↗
+            Implementation guide <LuArrowUpRight aria-hidden="true" />
           </a>
         </nav>
       </footer>

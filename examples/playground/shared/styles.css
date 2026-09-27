@@ -153,7 +153,7 @@ button:focus-visible {
 .header-link {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   color: #d8d9db;
   font-size: 13px;
   font-weight: 650;
@@ -164,9 +164,13 @@ button:focus-visible {
 .docs-links a:hover {
   color: var(--lime);
 }
-.header-link span {
+.header-link svg {
   color: var(--lime);
-  font-size: 19px;
+  font-size: 16px;
+  flex: none;
+}
+.header-link .external-arrow {
+  margin-left: 3px;
 }
 .header-links {
   display: flex;
@@ -255,10 +259,14 @@ button:focus-visible {
   background: #e7ff9b;
   box-shadow: 0 18px 55px rgba(215, 240, 120, 0.24);
 }
-.primary-button span {
+.primary-button svg {
+  flex: none;
   font-size: 19px;
 }
 .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
   font-weight: 600;
   color: #d7d9d8;
@@ -575,30 +583,38 @@ button:focus-visible {
   letter-spacing: 0.17em;
   font-weight: 750;
 }
-.framework-symbol {
-  display: grid;
-  place-items: center;
-  width: 55px;
+.framework-logos {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   height: 55px;
   margin: 38px 0 22px;
-  color: var(--lime);
-  font-size: 44px;
-  line-height: 1;
 }
-.framework-symbol--next {
-  border: 1px solid var(--white);
-  border-radius: 50%;
+.framework-logo {
+  width: 42px;
+  height: 42px;
+}
+.framework-logo--react {
+  color: #61dafb;
+}
+.framework-logo--vite {
+  color: #a78bfa;
+}
+.framework-logo--next {
   color: var(--white);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.13em;
-  padding-right: 4px;
+  width: 55px;
+  height: 55px;
+}
+.framework-logo-plus {
+  color: #89909b;
+  font-size: 18px;
+  font-weight: 500;
 }
 .framework-card strong {
   font-size: 21px;
   letter-spacing: -0.04em;
 }
-.framework-card > span:nth-last-child(2) {
+.framework-description {
   margin-top: 7px;
   color: var(--muted);
   font-size: 13px;
@@ -607,7 +623,8 @@ button:focus-visible {
   position: absolute;
   bottom: 30px;
   right: 30px;
-  font-size: 25px;
+  width: 23px;
+  height: 23px;
   color: var(--lime);
   transition: transform 0.3s;
 }
@@ -642,6 +659,11 @@ button:focus-visible {
   color: #e2e5de;
   transition: color 0.2s;
 }
+.landing-footer nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 .landing-footer a:hover,
 .site-footer > span a:hover {
   color: var(--lime);
@@ -661,7 +683,11 @@ button:focus-visible {
   border: 1px solid var(--line);
 }
 .framework-switch a {
-  min-width: 76px;
+  min-width: 96px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   padding: 9px 17px;
   border-radius: inherit;
   text-align: center;
@@ -671,6 +697,16 @@ button:focus-visible {
   transition:
     color 0.25s,
     background 0.25s;
+}
+.framework-switch svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.switch-logos {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 .framework-switch a[aria-current='page'] {
   background: var(--white);
@@ -783,10 +819,10 @@ button:focus-visible {
     background 0.2s,
     transform 0.2s;
 }
-.refresh-button span {
+.refresh-button svg {
   color: var(--lime);
-  font-size: 22px;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
 }
 .refresh-button:hover {
   background: #2b2e34;
@@ -1022,6 +1058,11 @@ button:focus-visible {
   border-radius: 50%;
   color: var(--lime);
   font-size: 13px;
+}
+.player-play-icon svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
 }
 .progress-track {
   width: 100%;
@@ -1318,6 +1359,9 @@ button:focus-visible {
   margin-top: 31px;
 }
 .docs-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: #e2e5de;
   font-size: 12px;
   font-weight: 700;
@@ -1413,6 +1457,9 @@ button:focus-visible {
   min-width: 195px;
 }
 .agent-actions > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: #e2e5de;
   font-size: 12px;
   font-weight: 700;
@@ -1648,7 +1695,7 @@ button:focus-visible {
     flex-direction: column;
     align-items: flex-start;
   }
-  .framework-symbol {
+  .framework-logos {
     margin: 23px 0 17px;
   }
   .playground-header {

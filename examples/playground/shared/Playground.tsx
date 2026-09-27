@@ -1,6 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import {
+  LuArrowUpRight,
+  LuBookOpen,
+  LuCopy,
+  LuPause,
+  LuPlay,
+  LuRefreshCw,
+} from 'react-icons/lu'
+import { SiGithub, SiNextdotjs, SiReact, SiVite } from 'react-icons/si'
 import type {
   NowPlayingResponse,
   TopArtistsResponse,
@@ -201,7 +210,7 @@ function Player({
             <div className="player-divider" />
             <div className="player-bottom">
               <span className="player-play-icon" aria-hidden="true">
-                {data.isPlaying ? 'Ⅱ' : '▶'}
+                {data.isPlaying ? <LuPause /> : <LuPlay />}
               </span>
               <span className="progress-track">
                 <span className={data.isPlaying ? 'progress-active' : ''} />
@@ -262,7 +271,7 @@ function DataPanels({
                   <span>{track.artist}</span>
                 </div>
                 <span className="track-arrow" aria-hidden="true">
-                  ↗
+                  <LuArrowUpRight />
                 </span>
               </li>
             ))}
@@ -380,7 +389,11 @@ export function Playground({ framework }: { framework: Framework }) {
             data-analytics-framework={framework}
             data-analytics-destination="react"
           >
-            React
+            <span className="switch-logos" aria-hidden="true">
+              <SiReact />
+              <SiVite />
+            </span>
+            React + Vite
           </a>
           <a
             href={`/next/${frameworkQuery}`}
@@ -391,7 +404,7 @@ export function Playground({ framework }: { framework: Framework }) {
             data-analytics-framework={framework}
             data-analytics-destination="next"
           >
-            Next.js
+            <SiNextdotjs aria-hidden="true" /> Next.js
           </a>
         </nav>
         <a
@@ -402,7 +415,8 @@ export function Playground({ framework }: { framework: Framework }) {
           target="_blank"
           rel="noreferrer"
         >
-          Source <span aria-hidden="true">↗</span>
+          <SiGithub aria-hidden="true" /> Source{' '}
+          <LuArrowUpRight className="external-arrow" aria-hidden="true" />
         </a>
       </header>
 
@@ -462,7 +476,7 @@ export function Playground({ framework }: { framework: Framework }) {
               onClick={refresh}
               aria-label="Refresh mock data"
             >
-              <span aria-hidden="true">↻</span> Refresh
+              <LuRefreshCw aria-hidden="true" /> Refresh
             </button>
           </div>
           <div className="view-picker">
@@ -562,7 +576,8 @@ export function Playground({ framework }: { framework: Framework }) {
                 target="_blank"
                 rel="noreferrer"
               >
-                Read the guide ↗
+                <LuBookOpen aria-hidden="true" /> Read the guide{' '}
+                <LuArrowUpRight aria-hidden="true" />
               </a>
               <a
                 href="https://www.npmjs.com/package/spotify-now-playing-headless"
@@ -571,7 +586,7 @@ export function Playground({ framework }: { framework: Framework }) {
                 target="_blank"
                 rel="noreferrer"
               >
-                View on npm ↗
+                View on npm <LuArrowUpRight aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -610,21 +625,21 @@ export function Playground({ framework }: { framework: Framework }) {
                 className="primary-button"
                 onClick={() => void copyPrompt()}
               >
-                Copy starter prompt <span aria-hidden="true">↗</span>
+                Copy starter prompt <LuCopy aria-hidden="true" />
               </button>
               <a
                 href="/agent-guide.md"
                 data-analytics-event="resource_open"
                 data-analytics-resource="agent_guide"
               >
-                Read the agent guide ↗
+                Read the agent guide <LuArrowUpRight aria-hidden="true" />
               </a>
               <a
                 href="/prompt.txt"
                 data-analytics-event="resource_open"
                 data-analytics-resource="prompt_text"
               >
-                View prompt text ↗
+                View prompt text <LuArrowUpRight aria-hidden="true" />
               </a>
             </div>
             <p className="prompt-status" role="status" aria-live="polite">
