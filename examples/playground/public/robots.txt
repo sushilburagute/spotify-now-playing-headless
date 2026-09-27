@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://headless-spotify.sush.dev/sitemap.xml

@@ -4,6 +4,16 @@ Headless, TypeScript-first Spotify data for portfolio sites and personal apps.
 It provides a server-side Spotify client, React hooks, and Next.js App Router
 route factories for Now Playing, Top Tracks, and Top Artists.
 
+**Interactive playground:** [headless-spotify.sush.dev](https://headless-spotify.sush.dev/) — explore the same preview in React + Vite and Next.js with fictional data.
+
+## Preview
+
+![Playground landing page with an animated music card](docs/images/playground-landing.png)
+
+![React playground showing playback controls and the Now Playing UI](docs/images/playground-react.png)
+
+The [playground source and deployment guide](examples/playground) explain how the static preview works.
+
 ## Features
 
 - Unstyled and UI-agnostic
@@ -238,6 +248,7 @@ represented by `{ isPlaying: false }`, not by an exception.
 
 - [`examples/nextjs-app-router`](examples/nextjs-app-router)
 - [`examples/react-vite`](examples/react-vite)
+- [Interactive playground source](examples/playground)
 
 ## Development
 

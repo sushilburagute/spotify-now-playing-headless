@@ -8,6 +8,8 @@ dist/
 build/
 .next/
 *.tsbuildinfo
+/examples/playground/public/react/
+/examples/playground/out/
 
 # Testing
 coverage/

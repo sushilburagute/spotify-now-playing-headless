@@ -1,0 +1,19 @@
+# Spotify Now Playing Headless
+
+> Headless TypeScript Spotify integration for portfolio sites and personal apps. The package provides a server-side Spotify client, React hooks, and Next.js App Router route factories for Now Playing, Top Tracks, and Top Artists. The playground uses fictional data and does not call Spotify.
+
+Package: https://www.npmjs.com/package/spotify-now-playing-headless
+Source: https://github.com/sushilburagute/spotify-now-playing-headless
+Author: Sushil Buragute — https://sush.dev/
+
+## Start here
+- [Implementation guide](https://headless-spotify.sush.dev/agent-guide.md): package exports, secure architecture, example code, and common states.
+- [Copyable implementation prompt](https://headless-spotify.sush.dev/prompt.txt): a prompt for a coding agent working in a consumer app.
+- [Main README](https://github.com/sushilburagute/spotify-now-playing-headless#readme): full API and authentication documentation.
+- [React playground](https://headless-spotify.sush.dev/react/): interactive hooks demo.
+- [Next.js playground](https://headless-spotify.sush.dev/next/): matching interactive hooks demo.
+
+## Important constraints
+- Store Spotify client ID, client secret, and refresh token on a trusted server. Never put secrets in VITE_* or browser code.
+- Persist a rotated refresh token from onRefreshToken for production use.
+- The public playground is mock-only; do not treat its fictional tracks or artwork as live Spotify data.

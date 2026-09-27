@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [nextjs-app-router, react-vite]
+        example: [nextjs-app-router, react-vite, playground]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
