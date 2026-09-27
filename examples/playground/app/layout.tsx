@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
+import { Analytics } from '../shared/AnalyticsClient'
 import '@fontsource-variable/space-grotesk/wght.css'
 import '../shared/styles.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://headless-spotify.sush.dev'),
+  metadataBase: new URL('https://spotify-headless.sush.dev'),
   title: {
     default: 'Spotify Now Playing Headless — Interactive Playground',
     template: '%s | Spotify Now Playing Headless',
@@ -55,7 +56,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Analytics />
+        {children}
+      </body>
     </html>
   )
 }

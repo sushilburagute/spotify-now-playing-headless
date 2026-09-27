@@ -1,6 +1,6 @@
 # Implement spotify-now-playing-headless
 
-This guide is for a developer or coding agent adding the package to a consumer app. The [interactive playground](https://headless-spotify.sush.dev/) is a mock-data demonstration of the React hooks. It does not call Spotify.
+This guide is for a developer or coding agent adding the package to a consumer app. The [interactive playground](https://spotify-headless.sush.dev/) is a mock-data demonstration of the React hooks. It does not call Spotify.
 
 ## Install
 
@@ -68,4 +68,4 @@ The hooks work in Vite, but Vite does not provide a production API server. Host 
 
 ## Copy a prompt
 
-Use [prompt.txt](https://headless-spotify.sush.dev/prompt.txt) as a starting point for a coding agent. Fill in your framework, desired UI, and secret storage before running it.
+Use [prompt.txt](https://spotify-headless.sush.dev/prompt.txt) as a starting point for a coding agent. Fill in your framework, desired UI, and secret storage before running it.

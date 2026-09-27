@@ -7,11 +7,11 @@ Source: https://github.com/sushilburagute/spotify-now-playing-headless
 Author: Sushil Buragute — https://sush.dev/
 
 ## Start here
-- [Implementation guide](https://headless-spotify.sush.dev/agent-guide.md): package exports, secure architecture, example code, and common states.
-- [Copyable implementation prompt](https://headless-spotify.sush.dev/prompt.txt): a prompt for a coding agent working in a consumer app.
+- [Implementation guide](https://spotify-headless.sush.dev/agent-guide.md): package exports, secure architecture, example code, and common states.
+- [Copyable implementation prompt](https://spotify-headless.sush.dev/prompt.txt): a prompt for a coding agent working in a consumer app.
 - [Main README](https://github.com/sushilburagute/spotify-now-playing-headless#readme): full API and authentication documentation.
-- [React playground](https://headless-spotify.sush.dev/react/): interactive hooks demo.
-- [Next.js playground](https://headless-spotify.sush.dev/next/): matching interactive hooks demo.
+- [React playground](https://spotify-headless.sush.dev/react/): interactive hooks demo.
+- [Next.js playground](https://spotify-headless.sush.dev/next/): matching interactive hooks demo.
 
 ## Important constraints
 - Store Spotify client ID, client secret, and refresh token on a trusted server. Never put secrets in VITE_* or browser code.

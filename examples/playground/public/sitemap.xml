@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://headless-spotify.sush.dev/</loc></url>
-  <url><loc>https://headless-spotify.sush.dev/react/</loc></url>
-  <url><loc>https://headless-spotify.sush.dev/next/</loc></url>
+  <url><loc>https://spotify-headless.sush.dev/</loc></url>
+  <url><loc>https://spotify-headless.sush.dev/react/</loc></url>
+  <url><loc>https://spotify-headless.sush.dev/next/</loc></url>
 </urlset>

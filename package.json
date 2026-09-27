@@ -18,7 +18,7 @@
     "type": "git",
     "url": "git+https://github.com/sushilburagute/spotify-now-playing-headless.git"
   },
-  "homepage": "https://headless-spotify.sush.dev/",
+  "homepage": "https://spotify-headless.sush.dev/",
   "bugs": {
     "url": "https://github.com/sushilburagute/spotify-now-playing-headless/issues"
   },

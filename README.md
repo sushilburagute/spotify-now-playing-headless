@@ -4,7 +4,7 @@ Headless, TypeScript-first Spotify data for portfolio sites and personal apps.
 It provides a server-side Spotify client, React hooks, and Next.js App Router
 route factories for Now Playing, Top Tracks, and Top Artists.
 
-**Interactive playground:** [headless-spotify.sush.dev](https://headless-spotify.sush.dev/) — explore the same preview in React + Vite and Next.js with fictional data.
+**Interactive playground:** [spotify-headless.sush.dev](https://spotify-headless.sush.dev/) — explore the same preview in React + Vite and Next.js with fictional data.
 
 ## Preview
 
@@ -230,6 +230,10 @@ SPOTIFY_REFRESH_TOKEN=your_refresh_token
 Spotify currently documents a six-month lifetime for Dashboard-issued refresh
 tokens. Reauthorize after expiration. Always validate the OAuth `state` value
 in a real callback handler.
+
+**If you'd like to read a blog-post about this process:**
+
+https://sush.dev/blog/spotify-api-integration-with-nextjs?utm_source=github_package
 
 ## Errors
 

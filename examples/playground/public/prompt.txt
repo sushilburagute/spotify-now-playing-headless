@@ -4,7 +4,7 @@ My framework is: [React + Vite / Next.js App Router].
 My desired UI is: [describe layout, style, and where it belongs].
 My server platform and secret store are: [describe them].
 
-First inspect the existing app and follow its conventions. Read the package README at https://github.com/sushilburagute/spotify-now-playing-headless and the implementation guide at https://headless-spotify.sush.dev/agent-guide.md. Install the package and use its documented entry points.
+First inspect the existing app and follow its conventions. Read the package README at https://github.com/sushilburagute/spotify-now-playing-headless and the implementation guide at https://spotify-headless.sush.dev/agent-guide.md. Install the package and use its documented entry points.
 
 Implement a trusted server endpoint for Spotify data. In Next.js App Router, prefer the package's route factories. In a Vite app, use SpotifyClient in a separate server or serverless endpoint. Keep SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, and SPOTIFY_REFRESH_TOKEN on the server; never expose them through VITE_* variables or client code. Persist any rotated refresh token through onRefreshToken.
 

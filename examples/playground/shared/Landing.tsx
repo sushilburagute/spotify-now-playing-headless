@@ -27,6 +27,8 @@ export function Landing() {
           <a
             className="header-link"
             href="https://sush.dev/"
+            data-analytics-event="resource_open"
+            data-analytics-resource="portfolio"
             target="_blank"
             rel="noreferrer"
           >
@@ -35,6 +37,8 @@ export function Landing() {
           <a
             className="header-link"
             href="https://github.com/sushilburagute"
+            data-analytics-event="resource_open"
+            data-analytics-resource="github_profile"
             target="_blank"
             rel="noreferrer"
           >
@@ -60,14 +64,19 @@ export function Landing() {
             className="landing-intro reveal"
             style={{ animationDelay: '340ms' }}
           >
-            Spotify data, without the prescribed interface. Explore a tiny
-            playground built with the same hooks you can use in your own app.
+            Spotify data, without the prescribed interface. Explore six looks
+            built with the same hooks you can use in your own app.
           </p>
           <div
             className="landing-actions reveal"
             style={{ animationDelay: '440ms' }}
           >
-            <a className="primary-button" href="/react/">
+            <a
+              className="primary-button"
+              href="/react/"
+              data-analytics-event="demo_open"
+              data-analytics-framework="react"
+            >
               Enter playground <span aria-hidden="true">↗</span>
             </a>
             <a className="text-button" href="#choose-framework">
@@ -149,14 +158,24 @@ export function Landing() {
           </p>
         </div>
         <div className="framework-cards">
-          <a href="/react/" className="framework-card">
+          <a
+            href="/react/"
+            className="framework-card"
+            data-analytics-event="demo_open"
+            data-analytics-framework="react"
+          >
             <span className="framework-index">01 / REACT</span>
             <span className="framework-symbol">◉</span>
             <strong>React + Vite</strong>
             <span>See the hooks in a lightweight client app.</span>
             <span className="framework-arrow">↗</span>
           </a>
-          <a href="/next/" className="framework-card">
+          <a
+            href="/next/"
+            className="framework-card"
+            data-analytics-event="demo_open"
+            data-analytics-framework="next"
+          >
             <span className="framework-index">02 / NEXT.JS</span>
             <span className="framework-symbol framework-symbol--next">N</span>
             <strong>Next.js App Router</strong>
@@ -178,7 +197,13 @@ export function Landing() {
           .
         </span>
         <nav aria-label="More links">
-          <a href={repository} target="_blank" rel="noreferrer">
+          <a
+            href={repository}
+            data-analytics-event="resource_open"
+            data-analytics-resource="project_source"
+            target="_blank"
+            rel="noreferrer"
+          >
             Project source ↗
           </a>
           <a
@@ -188,7 +213,13 @@ export function Landing() {
           >
             Sushil on GitHub ↗
           </a>
-          <a href="/agent-guide.md">Implementation guide ↗</a>
+          <a
+            href="/agent-guide.md"
+            data-analytics-event="resource_open"
+            data-analytics-resource="agent_guide"
+          >
+            Implementation guide ↗
+          </a>
         </nav>
       </footer>
     </main>

@@ -1,7 +1,7 @@
 # Interactive playground
 
 One landing page and two matching previews, exported as static files and served
-from one domain: **https://headless-spotify.sush.dev/**.
+from one domain: **https://spotify-headless.sush.dev/**.
 
 | Path      | Content              |
 | --------- | -------------------- |
@@ -12,10 +12,11 @@ from one domain: **https://headless-spotify.sush.dev/**.
 Both previews render the same `shared/Playground.tsx` component. It calls the
 published package's `useNowPlaying`, `useTopTracks`, and `useTopArtists` hooks with
 abort-aware mock fetchers. The controls show playing, paused, loading, and error
-states. All names and artwork are fictional. The demo uses no Spotify account or
-credentials. The React hooks run, but the demo does not call Spotify or exercise
-the server-side client and route factories; see the other examples for real API
-integration.
+states across six player looks. Switching between React and Next.js keeps the
+selected look and state. All names and artwork are fictional. The demo uses no
+Spotify account or credentials. The React hooks run, but the demo does not call
+Spotify or exercise the server-side client and route factories; see the other
+examples for real API integration.
 
 ## Run locally
 
@@ -31,7 +32,7 @@ npm run preview
 Open `http://127.0.0.1:3000`. This previews the exact static files that Vercel
 will serve. Rebuild after changing source. For hot reload during development,
 run `npm run dev` for the landing and Next.js page or `npm run dev:react` for
-In the Vercel project’s Domains settings, add `headless-spotify.sush.dev` and
+In the Vercel project’s Domains settings, add `spotify-headless.sush.dev` and
 apply the CNAME or verification records Vercel shows for your project. The
 domain is already used for canonical URLs, the sitemap, and social metadata, so
 publish it before submitting the sitemap to search engines.
@@ -40,8 +41,9 @@ Static delivery removes function charges for this demo, but Vercel still meters
 CDN requests and data transfer. The CSS, JavaScript, font, and images are served
 as static assets. Hashed Vite assets get long-lived cache headers; the font is
 self-hosted under the [Space Grotesk license](public/space-grotesk-license.txt).
-No analytics, third-party image host, polling, or user-facing API
-calls are enabled. Watch the Vercel Usage dashboard after launch. If you use a
+GA4 loads from Google only on `spotify-headless.sush.dev`; it adds no Vercel
+function calls. No third-party image host, polling, or Spotify API calls are
+enabled. Watch the Vercel Usage dashboard after launch. If you use a
 Pro team, set a Spend Management amount with alerts **and explicitly enable**
 the pause action if you want Vercel to pause production deployments. A threshold
 alone does not pause anything, the pause applies to **all projects on the team**,

@@ -19,6 +19,7 @@
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-ga4": "^3.0.1",
     "spotify-now-playing-headless": "1.1.3"
   },
   "devDependencies": {

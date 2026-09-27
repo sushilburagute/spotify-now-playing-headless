@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   NowPlayingResponse,
   TopArtistsResponse,
@@ -12,11 +12,12 @@ import {
   useTopTracks,
   type SpotifyFetcherOptions,
 } from 'spotify-now-playing-headless/react'
+import { trackAnalyticsEvent } from './analytics'
 import { nowPlaying, pausedPlaying, topArtists, topTracks } from './fixtures'
 
 type Framework = 'react' | 'next'
 type Scenario = 'playing' | 'paused' | 'loading' | 'error'
-type View = 'pulse' | 'poster' | 'quiet'
+type View = 'pulse' | 'poster' | 'quiet' | 'vinyl' | 'terminal' | 'paper'
 
 const scenarios: { id: Scenario; label: string }[] = [
   { id: 'playing', label: 'Playing' },
@@ -29,6 +30,9 @@ const views: { id: View; label: string; description: string }[] = [
   { id: 'pulse', label: 'Pulse', description: 'Immersive player' },
   { id: 'poster', label: 'Poster', description: 'Editorial feature' },
   { id: 'quiet', label: 'Quiet', description: 'Compact widget' },
+  { id: 'vinyl', label: 'Vinyl', description: 'Record sleeve' },
+  { id: 'terminal', label: 'Terminal', description: 'Signal monitor' },
+  { id: 'paper', label: 'Paper', description: 'Light editorial' },
 ]
 
 const reactCode = `import { useNowPlaying } from 'spotify-now-playing-headless/react'
@@ -305,6 +309,17 @@ export function Playground({ framework }: { framework: Framework }) {
   const [scenario, setScenario] = useState<Scenario>('playing')
   const [view, setView] = useState<View>('pulse')
   const [promptStatus, setPromptStatus] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const look = params.get('look')
+    const state = params.get('state')
+    if (views.some((item) => item.id === look)) setView(look as View)
+    if (scenarios.some((item) => item.id === state))
+      setScenario(state as Scenario)
+  }, [])
+
+  const frameworkQuery = `?look=${view}&state=${scenario}`
   const currentFixture = scenario === 'paused' ? pausedPlaying : nowPlaying
   const current = useNowPlaying({
     endpoint: '/api/now-playing',
@@ -320,6 +335,7 @@ export function Playground({ framework }: { framework: Framework }) {
   })
 
   const refresh = () => {
+    trackAnalyticsEvent('demo_refresh', { framework, look: view, scenario })
     void Promise.all([current.mutate(), tracks.mutate(), artists.mutate()])
   }
 
@@ -329,6 +345,7 @@ export function Playground({ framework }: { framework: Framework }) {
       if (!response.ok) throw new Error('Prompt unavailable')
       await navigator.clipboard.writeText(await response.text())
       setPromptStatus('Copied to clipboard')
+      trackAnalyticsEvent('starter_prompt_copy', { framework })
     } catch {
       setPromptStatus('Open the prompt file to copy it')
     }
@@ -355,14 +372,24 @@ export function Playground({ framework }: { framework: Framework }) {
         </a>
         <nav className="framework-switch" aria-label="Framework preview">
           <a
-            href="/react/"
+            href={`/react/${frameworkQuery}`}
             aria-current={framework === 'react' ? 'page' : undefined}
+            data-analytics-event={
+              framework === 'react' ? undefined : 'demo_framework_switch'
+            }
+            data-analytics-framework={framework}
+            data-analytics-destination="react"
           >
             React
           </a>
           <a
-            href="/next/"
+            href={`/next/${frameworkQuery}`}
             aria-current={framework === 'next' ? 'page' : undefined}
+            data-analytics-event={
+              framework === 'next' ? undefined : 'demo_framework_switch'
+            }
+            data-analytics-framework={framework}
+            data-analytics-destination="next"
           >
             Next.js
           </a>
@@ -370,6 +397,8 @@ export function Playground({ framework }: { framework: Framework }) {
         <a
           className="header-link"
           href="https://github.com/sushilburagute/spotify-now-playing-headless/tree/main/examples/playground"
+          data-analytics-event="resource_open"
+          data-analytics-resource="playground_source"
           target="_blank"
           rel="noreferrer"
         >
@@ -413,7 +442,14 @@ export function Playground({ framework }: { framework: Framework }) {
                     key={item.id}
                     type="button"
                     aria-pressed={scenario === item.id}
-                    onClick={() => setScenario(item.id)}
+                    onClick={() => {
+                      setScenario(item.id)
+                      if (scenario !== item.id)
+                        trackAnalyticsEvent('demo_state_change', {
+                          framework,
+                          scenario: item.id,
+                        })
+                    }}
                   >
                     {item.label}
                   </button>
@@ -430,7 +466,10 @@ export function Playground({ framework }: { framework: Framework }) {
             </button>
           </div>
           <div className="view-picker">
-            <span className="control-label">02 / CHANGE THE LOOK</span>
+            <div className="view-picker-heading">
+              <span className="control-label">02 / CHANGE THE LOOK</span>
+              <span>One response, six ways to present it.</span>
+            </div>
             <div
               className="view-options"
               role="group"
@@ -441,12 +480,28 @@ export function Playground({ framework }: { framework: Framework }) {
                   key={item.id}
                   type="button"
                   className={view === item.id ? 'active' : ''}
+                  data-view={item.id}
                   aria-pressed={view === item.id}
-                  onClick={() => setView(item.id)}
+                  onClick={() => {
+                    setView(item.id)
+                    if (view !== item.id)
+                      trackAnalyticsEvent('demo_look_change', {
+                        framework,
+                        look: item.id,
+                      })
+                  }}
                 >
-                  <span className="view-dot" />
-                  <strong>{item.label}</strong>
-                  <small>{item.description}</small>
+                  <span
+                    className={`view-swatch view-swatch--${item.id}`}
+                    aria-hidden="true"
+                  >
+                    <i />
+                    <i />
+                  </span>
+                  <span className="view-option-copy">
+                    <strong>{item.label}</strong>
+                    <small>{item.description}</small>
+                  </span>
                 </button>
               ))}
             </div>
@@ -459,14 +514,14 @@ export function Playground({ framework }: { framework: Framework }) {
             error={current.error}
           />
           <div className="preview-caption">
-            <span>FIG. 01 — A HEADLESS HOOK, THREE DIFFERENT MOODS.</span>
+            <span>FIG. 01 — ONE HEADLESS HOOK, SIX DIFFERENT LOOKS.</span>
             <span>
               BUILT WITH {framework === 'react' ? 'REACT + VITE' : 'NEXT.JS'}
             </span>
           </div>
         </section>
 
-        <section className="collections-section">
+        <section className={`collections-section collections-section--${view}`}>
           <div className="section-heading">
             <div>
               <span className="section-kicker">BEYOND WHAT’S PLAYING</span>
@@ -502,6 +557,8 @@ export function Playground({ framework }: { framework: Framework }) {
             <div className="docs-links">
               <a
                 href="https://github.com/sushilburagute/spotify-now-playing-headless#readme"
+                data-analytics-event="resource_open"
+                data-analytics-resource="readme"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -509,6 +566,8 @@ export function Playground({ framework }: { framework: Framework }) {
               </a>
               <a
                 href="https://www.npmjs.com/package/spotify-now-playing-headless"
+                data-analytics-event="resource_open"
+                data-analytics-resource="npm"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -553,8 +612,20 @@ export function Playground({ framework }: { framework: Framework }) {
               >
                 Copy starter prompt <span aria-hidden="true">↗</span>
               </button>
-              <a href="/agent-guide.md">Read the agent guide ↗</a>
-              <a href="/prompt.txt">View prompt text ↗</a>
+              <a
+                href="/agent-guide.md"
+                data-analytics-event="resource_open"
+                data-analytics-resource="agent_guide"
+              >
+                Read the agent guide ↗
+              </a>
+              <a
+                href="/prompt.txt"
+                data-analytics-event="resource_open"
+                data-analytics-resource="prompt_text"
+              >
+                View prompt text ↗
+              </a>
             </div>
             <p className="prompt-status" role="status" aria-live="polite">
               {promptStatus}

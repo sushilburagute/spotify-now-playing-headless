@@ -28,25 +28,25 @@ const structuredData = {
     {
       '@type': 'WebSite',
       name: 'Spotify Now Playing Headless Playground',
-      url: 'https://headless-spotify.sush.dev/',
-      author: { '@id': 'https://headless-spotify.sush.dev/#author' },
+      url: 'https://spotify-headless.sush.dev/',
+      author: { '@id': 'https://spotify-headless.sush.dev/#author' },
     },
     {
       '@type': 'SoftwareApplication',
       name: 'spotify-now-playing-headless',
       description:
         'A headless TypeScript package for Spotify Now Playing, Top Tracks, and Top Artists in React and Next.js.',
-      url: 'https://headless-spotify.sush.dev/',
+      url: 'https://spotify-headless.sush.dev/',
       codeRepository:
         'https://github.com/sushilburagute/spotify-now-playing-headless',
       applicationCategory: 'DeveloperApplication',
       operatingSystem: 'Web',
-      author: { '@id': 'https://headless-spotify.sush.dev/#author' },
+      author: { '@id': 'https://spotify-headless.sush.dev/#author' },
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     },
     {
       '@type': 'Person',
-      '@id': 'https://headless-spotify.sush.dev/#author',
+      '@id': 'https://spotify-headless.sush.dev/#author',
       name: 'Sushil Buragute',
       url: 'https://sush.dev/',
       sameAs: ['https://github.com/sushilburagute'],
