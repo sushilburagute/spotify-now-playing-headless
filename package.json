@@ -16,7 +16,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "github:sushilburagute/spotify-now-playing-headless"
+    "url": "git+https://github.com/sushilburagute/spotify-now-playing-headless.git"
   },
   "homepage": "https://github.com/sushilburagute/spotify-now-playing-headless#readme",
   "bugs": {
